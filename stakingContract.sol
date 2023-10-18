@@ -15,7 +15,7 @@ pragma solidity ^0.8.19;
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";  // Importing the ERC20 interface
 import "@openzeppelin/contracts/access/Ownable.sol";     // Importing the Ownable contract from OpenZeppelin
 
-contract stakingContract is Ownable {  // Defining the main contract, inheriting from Ownable
+contract StakingContract is Ownable {  // Defining the main contract, inheriting from Ownable
     IERC20 public token;  // The token used for staking and rewards
     uint256 public totalStaked;  // Total amount of tokens staked in the contract
     uint256 public totalRewards;  // Total rewards accumulated in the contract
