@@ -12,7 +12,9 @@ contract tokenVesting {
     IERC20 public token;
     address owner;
 
+
     // This mapping associates user addresses with their vesting periods in UNIX timestamps.
+    mapping(address=>uint) public totalVestedAmount;
     mapping(address => uint256) public vestingPeriods;
 
     constructor(address _tokenAddress) {
@@ -28,16 +30,23 @@ contract tokenVesting {
 
         // Transfer tokens from the user to this contract.
         token.transferFrom(msg.sender, address(this), amount);
+        totalVestedAmount[msg.sender] += amount;
     }
 
     // This function allows users to remove vested tokens after the vesting period has ended.
     function removeVesting(uint256 amount) external {
         require(amount > 0, "Invalid amount");
+        require(totalVestedAmount[msg.sender] > 0 ,"you dont have token to remove");
         uint256 userVestingPeriod = vestingPeriods[msg.sender];
         require(userVestingPeriod > 0, "No vesting period set for this user");
         require(block.timestamp >= userVestingPeriod, "Vesting period not ended yet");
 
+        // Ensure that the user cannot remove more tokens than they have vested.
+        require(amount <= totalVestedAmount[msg.sender],"Cannot remove more tokens than vested"); 
+        totalVestedAmount[msg.sender] -= amount;
+
         // Transfer vested tokens back to the user.
         token.transfer(msg.sender, amount);
+
     }
 }
