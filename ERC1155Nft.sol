@@ -54,9 +54,5 @@ contract NFT1155 is ERC1155, Ownable {
     emit URI(_uri, _id);
   }
 
-  function withdrawBalance(uint256 amount) public onlyOwner{
-     payable(msg.sender).transfer(amount);
-  }
-
 }
     
