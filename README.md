@@ -40,7 +40,7 @@ Here's a sneak peek of what to expect during the 30 days:
 - **Day 1**: Hello World Smart Contract
 - **Day 2**: Token Creation
 - **Day 3**: Decentralized Voting System
-- ...
+- ....
 
 Stay tuned for exciting projects and concepts to explore every day.
 
