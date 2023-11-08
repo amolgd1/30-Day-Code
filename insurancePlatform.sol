@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 
 ////Write a Solidity function to implement a decentralized insurance platform, 
-// where users can purchase insurance policies and file claims ****////
+// where users can purchase insurance policies and file claims ****///
 
 pragma solidity ^0.8.19;
 
