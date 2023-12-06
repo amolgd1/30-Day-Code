@@ -58,8 +58,8 @@ contract crowdFunding {
         require(block.timestamp > deadline && raisedamount < target, "You are not eligible for a refund");
         require(contributors[msg.sender] > 0);
         address payable user = payable(msg.sender);
-        user.transfer(contributors[msg.sender]);
         contributors[msg.sender] = 0;
+        user.transfer(contributors[msg.sender]);
     }
 
     // Modifier to restrict access to the manager
