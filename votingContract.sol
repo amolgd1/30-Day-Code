@@ -56,7 +56,7 @@ contract Voting {
     }
 
     // Function to check if the voting period has ended.
-    function hasVoted() public view returns (bool) {
+    function hasEnded() public view returns (bool) {
         return (block.timestamp >= votingEndTime);
     }
 }

@@ -1,5 +1,4 @@
 // SPDX-License-Identifier: MIT
-
 // *** Write a Solidity function to transfer tokens from one address to another *** //
 
 pragma solidity >0.5.0 <0.9.0;
