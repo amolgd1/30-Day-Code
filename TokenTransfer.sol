@@ -12,10 +12,10 @@ contract tokenTransfer {
     uint256 public totalSupply; // total token supply
     mapping(address => uint256) public balanceOf; // mapping to track balance of each address
 
-    event Transfer(address indexed from, address indexed to, uint256 amount);
+    event Transfer(address indexed from, address indexed to, uint256 indexed amount);
 
     constructor(uint256 _initialSupply) {
-        totalSupply = _initialSupply * 10**18; // // Initialize the total supply, multiplying by 10^18 to account for decimals
+        totalSupply = _initialSupply * 10 ** (uint256(decimals)); // // Initialize the total supply, multiplying by 10^18 to account for decimals
         balanceOf[msg.sender] = totalSupply; // assign a total supply into contract creator
         emit Transfer(address(0), msg.sender, totalSupply); // emit a Transfer event to log the initial supply transfer to the contract creator
     }
