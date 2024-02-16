@@ -42,7 +42,7 @@ Here's a sneak peek of what to expect during the 30 days:
 - **Day 3**: Decentralized Voting System
 - ...
 
-Stay tuned for exciting projects and concepts to explore every day.
+Stay tuned for exciting projects and concepts to explore every day..
 
 ## Getting Started
 
