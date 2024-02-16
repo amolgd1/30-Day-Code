@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 
 //// **** Write a Solidity function to withdraw funds from a smart contract ****////
+// Day3/30
 
 pragma solidity ^0.8.0;
 
@@ -21,9 +22,4 @@ contract Withdrawfund {
         balanceOf[user] += amount; 
         payable(user).transfer(amount);
     }
-
-<<<<<<< HEAD
 }
-=======
-}
->>>>>>> 76a4ded1e267d8c812a670fe3e93d153f11e6db3
