@@ -16,9 +16,9 @@ contract LotteryContract {
         require(msg.value >= ticketPriceinWei, "Minimum ticket price is 1 Ether"); 
         players.push(msg.sender); // Add the sender's address to the list of participants
     }
-
+    // this is for practice purpses not used in actual code 
     function random() private view returns (uint) {
-        return uint(keccak256(abi.encodePacked(block.difficulty, block.timestamp, players))); 
+        return uint(keccak256(abi.encodePacked(block.difficulty, block.timestamp, players.length))); 
         // Generate a pseudo-random number based on various factors
     }
 
