@@ -1,180 +1,188 @@
 // SPDX-License-Identifier: MIT
-
 pragma solidity 0.8.19;
 
-// [0x5B38Da6a701c568545dCfcB03FcB875f56beddC4,0xAb8483F64d9C6d1EcF9b849Ae677dD3315835cb2,0x4B20993Bc481177ec7E8f571ceCaE8A9e22C02db],2
-// [0x78731D3Ca6b7E34aC0F824c42a7cC18A495cabaB,0x617F2E2fD72FD9D5503197092aC168c91465E7f2],1
-contract MultiSig {
-    // An array to store the addresses of the contract owners.
+// Multi-signature wallet contract with confirmation requirements
+
+contract MultiSigWallet {
+    event Deposit(address indexed spender, uint256 amount, uint256 balance);
+    event SubmitTransaction(
+        address indexed owner,
+        uint256 indexed txIndex,
+        address indexed to,
+        uint value,
+        bytes data
+    );
+
+    event ConfirmTransaction(address indexed owner, uint256 indexed txIndex);
+    event ExecuteTransaction(address indexed owner, uint256 indexed txIndex);
+    event RevokeConfirmation(address indexed owner, uint256 indexed txIndex);
+
+    // List of owners and the number of confirmations required for a transaction
     address[] public owners;
+    uint public numConfirmationRequired;
+    mapping (address=>bool) public isOwner;
 
-    // The number of owner confirmations required for a transaction.
-    uint256 public numConfirmationRequired;
+    // Mapping to track whether an owner has confirmed a transaction
+    // (mapping from tx index => owner => bool)
+    mapping (uint => mapping(address=>bool)) public isConfirmed;
 
-    struct Transaction {
-        // The target address for the transaction.
+    // Struct to represent a transaction
+    struct Transaction{
         address to;
-        // The amount in wei to be transferred.
         uint256 value;
-        // A flag indicating whether the transaction has been executed.
+        bytes data;
         bool executed;
+        uint256 numConfirmations;
     }
 
-    // Mapping to keep track of whether each owner has confirmed a transaction.
-    mapping(uint256 => mapping(address => bool)) isConfirmed;
-
-    // Array to store pending transactions.
+    // List of all transactions
     Transaction[] public transactions;
 
-    event TransactionSubmitted(
-        uint256 transactionsId,
-        address sender,
-        address receiver,
-        uint256 amount
-    );
-    event TransactionConfirmed(uint256 transactionsId);
-    event TransactionExecuted(uint256 transactionsId);
-
+    // Constructor to initialize the contract with owners and confirmation requirements
     constructor(address[] memory _owners, uint256 _numConfirmationRequired) {
-        // Ensure there are more than one owner and numConfirmationRequired is valid.
-        require(_owners.length > 1, "Owners required must be greater than 1");
-        require(
-            _numConfirmationRequired > 0 &&
-                _numConfirmationRequired <= _owners.length,
-            "Number of confirmations not in sync with the number of owners"
-        );
+        require(_owners.length > 0,"owners required");
+        require(_numConfirmationRequired > 0 && _numConfirmationRequired <= _owners.length,
+                "invalid num of required confirmation");
 
-        // Initialize the owners array with the provided addresses.
-        for (uint256 i = 0; i < _owners.length; i++) {
-            require(_owners[i] != address(0), "Invalid owner");
-            owners.push(_owners[i]);
+        // Initialize owners and confirmations
+        for(uint i = 0; i<_owners.length; i++){
+            address owner = _owners[i];
+
+            require(owner != address(0),"invalid owner");
+            require(!isOwner[owner],"owner not unique");
+
+            isOwner[owner] = true;
+            owners.push(owner);
         }
         numConfirmationRequired = _numConfirmationRequired;
     }
 
-    modifier OnlyOwner() {
-        bool isOwner = false;
-        for (uint256 i = 0; i < owners.length; i++) {
-            if (msg.sender == owners[i]) {
-                isOwner = true;
-                break;
-            }
-        }
-        require(isOwner, "you are not the owner");
+    // Modifier to check if the caller is an owner
+    modifier OnlyOwner(){
+        require(isOwner[msg.sender],"Not owner");
         _;
     }
 
-    // Function to deposit funds into the contract.
-    function deposit() public payable {}
-
-    function AddNewOwners(
-        address[] memory _newOwners,
-        uint256 _addNumberOfConfirmationRequired
-    ) external OnlyOwner {
-        require(_newOwners.length > 0, "Invalid owners");
-        require(
-            _addNumberOfConfirmationRequired == _newOwners.length,
-            "Invalid number of confirmation"
-        );
-
-        for (uint256 i = 0; i < _newOwners.length; i++) {
-            require(
-                _newOwners[i] != address(0),
-                "New owner address can't be zero"
-            );
-            require(
-                !isDuplicateOwner(_newOwners[i]),
-                "New owner address is already an owner"
-            );
-            owners.push(_newOwners[i]);
-        }
-
-        numConfirmationRequired += _addNumberOfConfirmationRequired;
+    // Modifier to check if the transaction index exists
+    modifier txExists(uint _txIndex){
+        require(_txIndex < transactions.length,"transation is not exists");
+        _;
     }
 
-    function isDuplicateOwner(address _address) internal view returns (bool) {
-        for (uint256 i = 0; i < owners.length; i++) {
-            if (owners[i] == _address) {
-                return true;
-            }
-        }
-        return false;
+    // Modifier to check if the transaction has not been confirmed
+    modifier NotConfirmed(uint _txIndex){
+        require(!isConfirmed[_txIndex][msg.sender],"transaction already confirmed");
+        _;
     }
 
-    // Function to submit a new transaction.
-    function submitTransaction(address _to, uint256 _value) public payable {
-        // Convert the value to wei and validate the target address and amount.
-        uint256 value = _value * 1 ether;
-        require(_to != address(0), "Invalid Address");
-        require(value > 0, "Transfer amount must be greater than zero");
-        uint256 transactionsId = transactions.length;
-
-        // Create and store the new transaction.
-        transactions.push(
-            Transaction({to: _to, value: value, executed: false})
-        );
-        emit TransactionSubmitted(transactionsId, msg.sender, _to, value);
+    // Modifier to check if the transaction has not been executed
+    modifier NotExecuted(uint _txIndex){
+        require(!transactions[_txIndex].executed,"transaction already executed");
+        _;
     }
 
-    // Function for an owner to confirm a transaction.
-    function confirmTransaction(uint256 _transactionsId) public OnlyOwner {
-        // Ensure the transaction ID is valid and not already confirmed.
-        require(_transactionsId < transactions.length, "Invalid TransactionId");
-        require(
-            !isConfirmed[_transactionsId][msg.sender],
-            "Transaction Already Confirmed"
-        );
-
-        // Mark the owner's confirmation and emit the confirmation event.
-        isConfirmed[_transactionsId][msg.sender] = true;
-        emit TransactionConfirmed(_transactionsId);
-
-        // If the transaction is confirmed by enough owners, execute it.
-        if (isTransactionConfirmed(_transactionsId)) {
-            executeTransaction(_transactionsId);
-        }
+    // Receive function to accept Ether deposits
+    receive() external payable { 
+        emit Deposit(msg.sender, msg.value, address(this).balance);
     }
 
-    // Function to execute a confirmed transaction.
-    function executeTransaction(uint256 _transactionsId)
-        public
-        payable
+    // Function to deposit Ether
+    function deposit() public payable {
+        emit Deposit(msg.sender, msg.value, address(this).balance);
+    }
+
+    // Function to submit a new transaction
+    function submitTransaction(address _to, uint256 _value, bytes memory _data) public OnlyOwner {
+        uint txIndex = transactions.length;
+
+        transactions.push(Transaction({
+            to: _to,
+            value: _value,
+            data: _data,
+            executed: false,
+            numConfirmations: 0
+        }));
+
+        emit SubmitTransaction(msg.sender, txIndex, _to, _value, _data);
+    }
+
+    // Function to confirm a transaction
+    function confirmTransaction(uint _txIndex) public 
+        OnlyOwner 
+        txExists(_txIndex) 
+        NotConfirmed(_txIndex) 
+        NotExecuted(_txIndex)  
+    {
+        Transaction storage transaction = transactions[_txIndex];
+        transaction.numConfirmations += 1;
+        isConfirmed[_txIndex][msg.sender] = true;
+
+        emit ConfirmTransaction(msg.sender, _txIndex);
+    }
+
+    // Function to execute a transaction
+    function executeTransaction(uint _txIndex) public 
+        OnlyOwner 
+        txExists(_txIndex) 
+        NotExecuted(_txIndex)
+    {
+        Transaction storage transaction = transactions[_txIndex];
+        require(transaction.numConfirmations >= numConfirmationRequired,"more confirmation required");
+
+        transaction.executed = true;
+
+        // Execute the transaction
+        (bool success,) = transaction.to.call{value: transaction.value}(transaction.data);
+        require(success,"tx failed");
+
+        emit ExecuteTransaction(msg.sender, _txIndex); 
+    }
+
+    // Function to revoke confirmation for a transaction
+    function revokeConfirmation(uint _txIndex) public 
         OnlyOwner
+        txExists(_txIndex) 
+        NotExecuted(_txIndex)
     {
-        // Ensure the transaction ID is valid and the transaction is not already executed.
-        require(_transactionsId < transactions.length, "Invalid TransactionId");
-        require(
-            !transactions[_transactionsId].executed,
-            "Transaction already executed"
-        );
+        Transaction storage transaction = transactions[_txIndex];
+        require(isConfirmed[_txIndex][msg.sender],"tx is not confirmed");
 
-        // Mark the transaction as executed and attempt the transfer.
-        transactions[_transactionsId].executed = true;
-        (bool success, ) = transactions[_transactionsId].to.call{
-            value: transactions[_transactionsId].value
-        }("");
-        require(success, "Transaction execution failed");
+        isConfirmed[_txIndex][msg.sender] = false;
+        transaction.numConfirmations -= 1;
 
-        // Emit the execution event.
-        emit TransactionExecuted(_transactionsId);
+        emit RevokeConfirmation(msg.sender, _txIndex);
     }
 
-    // Function to check if a transaction is confirmed by the required number of owners.
-    function isTransactionConfirmed(uint256 _transactionsId)
-        internal
-        view
-        returns (bool)
-    {
-        // Ensure the transaction ID is valid.
-        require(_transactionsId < transactions.length, "Invalid TransactionId");
-        uint256 confirmationCount; // Initially will be zero
+    // Function to get the list of owners
+    function getOwers() public view returns(address[] memory){
+        return owners;
+    }
 
-        // Count the number of owner confirmations for the transaction.
-        for (uint256 i = 0; i < owners.length; i++) {
-            if (isConfirmed[_transactionsId][owners[i]]) {
-                confirmationCount++;
-            }
-        }
-        return confirmationCount >= numConfirmationRequired;
+    // Function to get the total number of transactions
+    function getTransactionCount() public view returns(uint){
+        return transactions.length;
+    }
+
+    // Function to get details of a specific transaction
+    function getTx(uint _txIndex) 
+        public 
+        view 
+        returns(
+            address to,
+            uint value,
+            bytes memory data,
+            bool executed,
+            uint numConfirmation
+        )
+    {
+        Transaction storage transaction = transactions[_txIndex];
+
+        return (
+            transaction.to,
+            transaction.value,
+            transaction.data,
+            transaction.executed,
+            transaction.numConfirmations
+        );
     }
 }
